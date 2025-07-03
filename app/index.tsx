@@ -1,9 +1,10 @@
 // app/index.tsx
+import { useResults } from '@/contexts/ResultsContext';
 import { FontAwesome } from '@expo/vector-icons'; // Importando ícones
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -11,13 +12,37 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import { useAuth } from '../contexts/AuthContext'; // Importamos o hook
+
 
 export default function HomeScreen() {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter(); // Hook para navegar entre telas
+    const navigation = useNavigation();
+    const { token, logout } = useAuth(); // Pegamos o token dinâmico e a função de logout!
+    const { setResults } = useResults(); // <<< PEGAMOS A FUNÇÃO PARA SALVAR OS DADOS
+
+    // Adicionamos um botão de logout no header para testar
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (
+                <TouchableOpacity onPress={logout} style={styles.logoutIconButton}>
+                    <FontAwesome name="sign-out" size={18} color="white" />
+                </TouchableOpacity>
+            ),
+        });
+    }, [navigation, logout]);
+
+    useFocusEffect(
+        useCallback(() => {
+            // Esta função será executada toda vez que a tela HomeScreen ganhar foco
+            setImageUri(null);
+            console.log('Tela focada: imagem limpa para nova conferência.');
+        }, [])
+    );
 
     // Função para pegar a imagem da galeria
     const handlePickImage = async () => {
@@ -44,10 +69,16 @@ export default function HomeScreen() {
             return;
         }
 
+        // AVISO: Se o token for nulo, algo está errado, mas a rota já protege disso.
+        if (!token) {
+            Alert.alert('Erro de Autenticação', 'Nenhum token encontrado. Por favor, faça login novamente.');
+            logout(); // Força o logout
+            return;
+        }
+
+
         setIsLoading(true);
         const apiUrl = 'http://192.168.0.111:8000/api/ocr-upload'; // <<< COLOQUE A URL DA SUA API AQUI
-
-        const token = '2|g7BCBrdWDPU8VMalIpYk5synmhXYUJzZEW2tJoJxed111528';
 
         // === INÍCIO DOS LOGS DE DEPURAÇÃO ===
         console.log('--- Iniciando Envio ---');
@@ -75,8 +106,9 @@ export default function HomeScreen() {
                 },
             });
 
-            // Navega para a tela de resultados, passando os dados da API como parâmetros
-            router.push({ pathname: '/results', params: response.data });
+            setResults(response.data);
+
+            router.push('/results');
 
         } catch (error: any) {
             // ESTE É O LOG MAIS IMPORTANTE
@@ -152,7 +184,7 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         color: '#333',
-        marginTop: 40,
+        marginTop: 30,
         marginBottom: 10,
     },
     subtitle: {
@@ -164,10 +196,12 @@ const styles = StyleSheet.create({
     selectButton: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#4a4a4a',
         paddingVertical: 15,
         paddingHorizontal: 60,
-        borderRadius: 12,
+        width: '100%',
+        borderRadius: 15,
         marginBottom: 30,
     },
     selectButtonText: {
@@ -221,5 +255,14 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+     logoutIconButton: {
+        backgroundColor: '#4a4a4a',
+        width: 38,
+        height: 38,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
     },
 });

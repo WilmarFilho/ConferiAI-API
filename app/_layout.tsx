@@ -1,65 +1,65 @@
 // app/_layout.tsx
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { ResultsProvider } from '@/contexts/ResultsContext';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { AuthProvider, useAuth } from '../contexts/AuthContext'; // Importamos nosso contexto
 
-// Esta linha é importante, ela previne a tela de splash de sumir antes de tudo estar pronto.
-// Se você não tiver a biblioteca, instale com: npx expo install expo-splash-screen
-import * as SplashScreen from 'expo-splash-screen';
+function ProtectedLayout() {
+  const { token, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-// Previne a tela de splash de esconder automaticamente.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  // Carrega as fontes que vêm no projeto. É uma boa prática manter isso.
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  // Esconde a tela de splash assim que as fontes carregarem
   useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, error]);
+    // Se não estiver carregando, verificamos o token
+    if (!isLoading) {
+      // ====================================================================
+      // AQUI ESTÁ A CORREÇÃO
+      // Em vez de procurar por um grupo '(auth)', verificamos se o segmento
+      // atual é a própria tela de login.
+      const isAuthRoute = segments[0] === 'login';
+      // ====================================================================
 
-  // Se as fontes não carregaram ainda (ou deu erro), não renderiza nada para evitar a tela preta.
-  if (!loaded && !error) {
-    return null;
+      if (token && isAuthRoute) {
+        // Se o usuário está logado e na tela de login, redireciona para a home
+        router.replace('/');
+      } else if (!token && !isAuthRoute) {
+        // Se o usuário não está logado e NÃO está na tela de login, redireciona para o login
+        router.replace('/login');
+      }
+    }
+  }, [token, isLoading, segments]);
+
+  // Se estiver carregando as informações de auth, não mostra nada para evitar piscar a tela.
+  if (isLoading) {
+    return null; // Ou um ActivityIndicator global, se preferir
   }
 
   // A Stack é a navegação em pilha.
-  // A propriedade "initialRouteName" define qual tela abre primeiro!
   return (
-    <>
-      <Stack initialRouteName="login">
-        {/* Tela de login. Será a primeira a ser vista. */}
-        <Stack.Screen
-          name="login"
-          options={{
-            headerShown: false, // Esconde o cabeçalho para parecer uma tela de entrada
-          }}
-        />
-        {/* A tela principal do app. Onde o usuário vai enviar a foto. */}
-        <Stack.Screen
-          name="index"
-          options={{
-            title: 'Conferir Aposta',
-            headerStyle: { backgroundColor: '#f0f0f0' },
-            headerTitleStyle: { fontWeight: 'bold' },
-          }}
-        />
-        {/* A tela que mostrará o resultado vindo da sua API. */}
-        <Stack.Screen
-          name="results"
-          options={{
-            title: 'Resultado da Conferência',
-            presentation: 'modal', // Abre a tela de baixo para cima
-          }}
-        />
-      </Stack>
+    <Stack>
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="index"
+        options={{ title: 'Conferir Aposta', headerStyle: { backgroundColor: '#f0f0f0' } }}
+      />
+      <Stack.Screen
+        name="results"
+        options={{ title: 'Resultado da Conferência', presentation: 'modal' }}
+      />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  // Envolvemos toda a aplicação com o nosso provedor de autenticação.
+  return (
+    <AuthProvider>
+      {/* ...e depois com o ResultsProvider por dentro. */}
+      <ResultsProvider>
+        <ProtectedLayout />
+      </ResultsProvider>
       <StatusBar style="dark" />
-    </>
+    </AuthProvider>
   );
 }
