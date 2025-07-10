@@ -73,7 +73,7 @@ export default function HomeScreen() {
 
         setIsLoading(true);
 
-        const apiUrl = 'http://192.168.0.111:8000/api/ocr-upload'; 
+        const apiUrl = 'https://confereai.celleta.com/api/ocr-upload'; 
 
         const formData = new FormData();
 

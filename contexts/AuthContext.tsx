@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Função de Login
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('http://192.168.0.111:8000/api/login', {
+      const response = await axios.post('https://confereai.celleta.com/api/login', {
         email: email,
         password: password,
       });
@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       await SecureStore.setItemAsync('userToken', newToken);
     } catch (error) {
+      console.error(error)
       throw new Error('Email ou senha inválidos.');
     }
   };
