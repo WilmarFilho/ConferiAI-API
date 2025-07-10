@@ -1,13 +1,12 @@
-// app/login.tsx
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useAuth } from '../contexts/AuthContext'; // Importamos nosso hook
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth(); // Pegamos a função de login do contexto
+  const { login } = useAuth(); 
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -17,7 +16,6 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       await login(email, password);
-      // A navegação agora é gerenciada automaticamente pelo _layout!
     } catch (error: any) {
       Alert.alert('Erro no Login', error.message);
     } finally {
@@ -52,7 +50,9 @@ export default function LoginScreen() {
   );
 }
 
-// Estilos (sem alterações)
+
+
+// Estilos 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 20 },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 30 },

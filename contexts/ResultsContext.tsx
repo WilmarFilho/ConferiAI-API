@@ -1,8 +1,6 @@
-// contexts/ResultsContext.tsx
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 
-// A interface dos nossos dados de resultado
-// (Você pode copiar e colar do seu arquivo results.tsx antigo)
+// Interface para uma única aposta
 interface ResultadoAposta {
   aposta: number[];
   acertos: number;
@@ -12,26 +10,37 @@ interface ResultadoAposta {
   descricaoPremio: string;
 }
 
-export interface ResultData {
+// Interface para a RESPOSTA DE SUCESSO da API
+interface SuccessResponse {
   Mensagem: string;
-  Concurso: string;
+  Concurso: number; 
   TipoJogo: string;
   NumerosSorteados: string[];
   FoiPremiado: boolean;
   ValorPremioTotal: number;
   ResultadosPorAposta: ResultadoAposta[];
+  'Texto Bruto': string;
 }
 
-// A "forma" do nosso contexto
+// Interface para a RESPOSTA DE FALLBACK (erro de identificação) da API
+interface FallbackResponse {
+  Mensagem: string;
+  'Texto Bruto': string;
+  Apostas?: number[][]; 
+}
+
+// Tipo de União: `results` pode ser um desses três formatos
+export type ApiResponse = SuccessResponse | FallbackResponse;
+
 interface ResultsContextData {
-  results: ResultData | null;
-  setResults: (data: ResultData) => void;
+  results: ApiResponse | null;
+  setResults: (data: ApiResponse | null) => void;
 }
 
 const ResultsContext = createContext<ResultsContextData>({} as ResultsContextData);
 
-export const ResultsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [results, setResults] = useState<ResultData | null>(null);
+export const ResultsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [results, setResults] = useState<ApiResponse | null>(null);
 
   return (
     <ResultsContext.Provider value={{ results, setResults }}>
@@ -40,7 +49,10 @@ export const ResultsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 };
 
-// Hook customizado para usar nosso contexto facilmente
 export function useResults() {
-  return useContext(ResultsContext);
+  const context = useContext(ResultsContext);
+  if (!context) {
+    throw new Error('useResults must be used within a ResultsProvider');
+  }
+  return context;
 }

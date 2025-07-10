@@ -1,9 +1,7 @@
-// contexts/AuthContext.tsx
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-// A "forma" dos dados que nosso contexto vai fornecer
 interface AuthContextData {
   token: string | null;
   isLoading: boolean;
@@ -35,20 +33,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Função de Login
   const login = async (email: string, password: string) => {
     try {
-      // ==========================================================
-      // ADICIONE A URL DA SUA API DE LOGIN AQUI!
       const response = await axios.post('http://192.168.0.111:8000/api/login', {
         email: email,
         password: password,
       });
-      // ==========================================================
       
-      const newToken = response.data.token; // Assumindo que a API retorna { token: '...' }
+      const newToken = response.data.token; 
       setToken(newToken);
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       await SecureStore.setItemAsync('userToken', newToken);
     } catch (error) {
-      console.error('Falha no login:', error);
       throw new Error('Email ou senha inválidos.');
     }
   };

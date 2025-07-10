@@ -1,6 +1,5 @@
-// app/index.tsx
 import { useResults } from '@/contexts/ResultsContext';
-import { FontAwesome } from '@expo/vector-icons'; // Importando ícones
+import { FontAwesome } from '@expo/vector-icons';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
@@ -14,18 +13,17 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext'; // Importamos o hook
+import { useAuth } from '../contexts/AuthContext';
 
 
 export default function HomeScreen() {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter(); // Hook para navegar entre telas
+    const router = useRouter(); 
     const navigation = useNavigation();
-    const { token, logout } = useAuth(); // Pegamos o token dinâmico e a função de logout!
-    const { setResults } = useResults(); // <<< PEGAMOS A FUNÇÃO PARA SALVAR OS DADOS
+    const { token, logout } = useAuth(); 
+    const { setResults } = useResults(); 
 
-    // Adicionamos um botão de logout no header para testar
     useLayoutEffect(() => {
         navigation.setOptions({
             headerRight: () => (
@@ -38,9 +36,7 @@ export default function HomeScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            // Esta função será executada toda vez que a tela HomeScreen ganhar foco
             setImageUri(null);
-            console.log('Tela focada: imagem limpa para nova conferência.');
         }, [])
     );
 
@@ -69,22 +65,15 @@ export default function HomeScreen() {
             return;
         }
 
-        // AVISO: Se o token for nulo, algo está errado, mas a rota já protege disso.
         if (!token) {
             Alert.alert('Erro de Autenticação', 'Nenhum token encontrado. Por favor, faça login novamente.');
-            logout(); // Força o logout
+            logout();
             return;
         }
 
-
         setIsLoading(true);
-        const apiUrl = 'http://192.168.0.111:8000/api/ocr-upload'; // <<< COLOQUE A URL DA SUA API AQUI
 
-        // === INÍCIO DOS LOGS DE DEPURAÇÃO ===
-        console.log('--- Iniciando Envio ---');
-        console.log('URL da API:', apiUrl);
-        console.log('URI da Imagem:', imageUri);
-
+        const apiUrl = 'http://192.168.0.111:8000/api/ocr-upload'; 
 
         const formData = new FormData();
 
@@ -98,11 +87,7 @@ export default function HomeScreen() {
             const response = await axios.post(apiUrl, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    // ==========================================================
-                    // AQUI ESTÁ A ADIÇÃO DO TOKEN
-                    // O formato é 'Bearer ' + seu token.
                     'Authorization': `Bearer ${token}`,
-                    // ==========================================================
                 },
             });
 
@@ -111,7 +96,7 @@ export default function HomeScreen() {
             router.push('/results');
 
         } catch (error: any) {
-            // ESTE É O LOG MAIS IMPORTANTE
+
             console.error('❌ ERRO NA REQUISIÇÃO AXIOS:');
 
             if (error.response) {
@@ -126,12 +111,12 @@ export default function HomeScreen() {
                 // Algo deu errado ao configurar a requisição
                 console.error('Erro na configuração da requisição:', error.message);
             }
-            // Log do objeto de configuração do Axios, útil para ver a URL, headers, etc.
+        
             console.error('Configuração do Axios:', error.config);
 
             Alert.alert('Erro de Rede', 'Não foi possível conectar ao servidor. Verifique os logs no terminal para mais detalhes.');
+
         } finally {
-            console.log('--- Fim do Envio ---');
             setIsLoading(false);
         }
     };
@@ -172,7 +157,7 @@ export default function HomeScreen() {
     );
 }
 
-// Estilos para recriar o visual da imagem
+// Estilos 
 const styles = StyleSheet.create({
     container: {
         flex: 1,

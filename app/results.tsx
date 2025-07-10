@@ -1,19 +1,8 @@
-// app/results.tsx
 import { FontAwesome } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useResults } from '../contexts/ResultsContext';
-
-// A interface para a estrutura de uma única aposta, que já está no seu contexto
-// mas é bom ter aqui para referência.
-interface ResultadoAposta {
-  aposta: number[];
-  acertos: number;
-  numerosAcertados: string[];
-  isPremiada: boolean;
-  valorPremio: number;
-  descricaoPremio: string;
-}
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ApiResponse, useResults } from '../contexts/ResultsContext';
 
 // Uma pequena função para formatar números como moeda brasileira (R$)
 const formatCurrency = (value: number) => {
@@ -23,11 +12,15 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export default function ResultsScreen() {
-  // Pegamos os resultados diretamente do nosso contexto global!
-  const { results } = useResults();
+function isSuccessResponse(response: ApiResponse) {
+  return 'Concurso' in response;
+}
 
-  // Se, por algum motivo, não houver resultados, mostramos uma tela de carregamento ou erro.
+export default function ResultsScreen() {
+  
+  const { results } = useResults();
+  const router = useRouter();
+
   if (!results) {
     return (
       <View style={styles.centered}>
@@ -37,89 +30,128 @@ export default function ResultsScreen() {
     );
   }
 
-  // Agora podemos usar os dados diretamente, com os tipos corretos e sem parsing!
-  const {
-    Mensagem,
-    Concurso,
-    TipoJogo,
-    NumerosSorteados,
-    FoiPremiado,
-    ValorPremioTotal,
-    ResultadosPorAposta,
-  } = results;
+  const isSuccessResponse = 'Concurso' in results;
 
-  const tipoJogoFormatado = TipoJogo.replace(/_/g, ' ');
+  // TELA DE SUCESSO
+  if (isSuccessResponse) {
 
+    const {
+      Mensagem,
+      Concurso,
+      TipoJogo,
+      NumerosSorteados,
+      FoiPremiado,
+      ValorPremioTotal,
+      ResultadosPorAposta,
+    } = results;
+
+    const tipoJogoFormatado = TipoJogo.replace(/_/g, ' ');
+
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        {/* Card Principal com o Resumo */}
+        <View style={[styles.card, FoiPremiado ? styles.cardSuccess : styles.cardFailure]}>
+          <FontAwesome
+            name={FoiPremiado ? 'check-circle' : 'times-circle'}
+            size={40}
+            color={FoiPremiado ? '#28a745' : '#dc3545'}
+            style={styles.icon}
+          />
+          <Text style={[styles.message, FoiPremiado ? styles.messageSuccess : styles.messageFailure]}>
+            {Mensagem}
+          </Text>
+          {FoiPremiado && (
+            <Text style={styles.totalPrize}>{formatCurrency(ValorPremioTotal)}</Text>
+          )}
+        </View>
+
+        {/* Card com as Informações do Sorteio */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Detalhes do Sorteio</Text>
+          <Text style={styles.infoText}>
+            <Text style={styles.infoLabel}>Jogo:</Text> {tipoJogoFormatado}
+          </Text>
+          <Text style={styles.infoText}>
+            <Text style={styles.infoLabel}>Concurso:</Text> {Concurso}
+          </Text>
+          <Text style={styles.cardSubtitle}>Números Sorteados:</Text>
+          <View style={styles.numbersContainer}>
+            {NumerosSorteados.map((num) => (
+              <View key={num} style={styles.lottoBall}>
+                <Text style={styles.lottoBallText}>{num}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Seção com a análise de cada aposta */}
+        <Text style={styles.sectionTitle}>Suas Apostas</Text>
+        {ResultadosPorAposta.map((resultado, index) => {
+          // Criamos um Set para uma busca rápida dos números acertados
+          const acertosSet = new Set(resultado.numerosAcertados);
+          return (
+            <View key={index} style={[styles.card, resultado.isPremiada && styles.cardApostaPremiada]}>
+              <Text style={styles.cardTitle}>Aposta #{index + 1}</Text>
+              <View style={styles.numbersContainer}>
+                {resultado.aposta.map((numApostado) => {
+                  const numFormatado = String(numApostado).padStart(2, '0');
+                  const acertou = acertosSet.has(numFormatado);
+                  return (
+                    <View key={numApostado} style={[styles.lottoBall, acertou ? styles.ballHit : styles.ballMiss]}>
+                      <Text style={[styles.lottoBallText, acertou && styles.ballHitText]}>{numFormatado}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.betResult}>
+                <Text style={styles.betResultText}>{resultado.descricaoPremio}</Text>
+                {resultado.isPremiada && (
+                  <Text style={styles.betPrizeText}>{formatCurrency(resultado.valorPremio)}</Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+    );
+  }
+
+  // TELA DE FALLBACK
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Card Principal com o Resumo */}
-      <View style={[styles.card, FoiPremiado ? styles.cardSuccess : styles.cardFailure]}>
+      <View style={[styles.card, styles.cardFailure]}>
         <FontAwesome
-          name={FoiPremiado ? 'check-circle' : 'times-circle'}
+          name="exclamation-triangle"
           size={40}
-          color={FoiPremiado ? '#28a745' : '#dc3545'}
+          color="#dc3545"
           style={styles.icon}
         />
-        <Text style={[styles.message, FoiPremiado ? styles.messageSuccess : styles.messageFailure]}>
-          {Mensagem}
+        <Text style={[styles.message, styles.messageFailure]}>
+          {results.Mensagem || 'Não foi possível ler o bilhete.'}
         </Text>
-        {FoiPremiado && (
-          <Text style={styles.totalPrize}>{formatCurrency(ValorPremioTotal)}</Text>
-        )}
       </View>
 
-      {/* Card com as Informações do Sorteio */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Detalhes do Sorteio</Text>
-        <Text style={styles.infoText}>
-          <Text style={styles.infoLabel}>Jogo:</Text> {tipoJogoFormatado}
-        </Text>
-        <Text style={styles.infoText}>
-          <Text style={styles.infoLabel}>Concurso:</Text> {Concurso}
-        </Text>
-        <Text style={styles.cardSubtitle}>Números Sorteados:</Text>
-        <View style={styles.numbersContainer}>
-          {NumerosSorteados.map((num) => (
-            <View key={num} style={styles.lottoBall}>
-              <Text style={styles.lottoBallText}>{num}</Text>
-            </View>
-          ))}
+      {/* Card para mostrar o texto que o OCR extraiu */}
+      {results['Texto Bruto'] && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Texto Extraído da Imagem</Text>
+          <Text style={styles.debugText}>
+            O texto abaixo foi o que conseguimos ler da sua foto. Verifique se a imagem está nítida e bem iluminada.
+          </Text>
+          <Text style={styles.rawText}>{results['Texto Bruto']}</Text>
         </View>
-      </View>
+      )}
 
-      {/* Seção com a análise de cada aposta */}
-      <Text style={styles.sectionTitle}>Suas Apostas</Text>
-      {ResultadosPorAposta.map((resultado, index) => {
-        // Criamos um Set para uma busca rápida dos números acertados
-        const acertosSet = new Set(resultado.numerosAcertados);
-        return (
-          <View key={index} style={[styles.card, resultado.isPremiada && styles.cardApostaPremiada]}>
-            <Text style={styles.cardTitle}>Aposta #{index + 1}</Text>
-            <View style={styles.numbersContainer}>
-              {resultado.aposta.map((numApostado) => {
-                const numFormatado = String(numApostado).padStart(2, '0');
-                const acertou = acertosSet.has(numFormatado);
-                return (
-                  <View key={numApostado} style={[styles.lottoBall, acertou ? styles.ballHit : styles.ballMiss]}>
-                    <Text style={[styles.lottoBallText, acertou && styles.ballHitText]}>{numFormatado}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={styles.betResult}>
-              <Text style={styles.betResultText}>{resultado.descricaoPremio}</Text>
-              {resultado.isPremiada && (
-                <Text style={styles.betPrizeText}>{formatCurrency(resultado.valorPremio)}</Text>
-              )}
-            </View>
-          </View>
-        );
-      })}
+      {/* Botão para o usuário tentar novamente */}
+      <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+        <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
-// Folha de estilos completa para um visual limpo e moderno
+
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -159,7 +191,7 @@ const styles = StyleSheet.create({
     borderLeftColor: '#dc3545',
   },
   cardApostaPremiada: {
-    backgroundColor: '#e8f5e9', // Um verde bem clarinho
+    backgroundColor: '#e8f5e9', 
     borderColor: '#28a745',
     borderWidth: 1,
   },
@@ -263,4 +295,41 @@ const styles = StyleSheet.create({
     color: '#28a745',
     marginTop: 5,
   },
+  debugText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  rawText: {
+    fontSize: 12,
+    color: '#888',
+    fontFamily: 'monospace', 
+    backgroundColor: '#f8f9fa',
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  retryButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
+
+
+
+
+
+
+
+
+
