@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Função de Login
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('https://confereai.celleta.com/api/login', {
+      const response = await axios.post('https://confereai.conexaopro.com.br/public/api/login', {
         email: email,
         password: password,
       });
