@@ -1,8 +1,14 @@
 import { ResultsProvider } from '@/contexts/ResultsContext';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+
+// options={{ title: 'Conferir Aposta', headerStyle: { backgroundColor: '#f0f0f0' } }}
+// options={{ title: 'Resultado da Conferência', presentation: 'modal' }}
+
+// Impede que a splash screen seja ocultada automaticamente
+SplashScreen.preventAutoHideAsync();
 
 function ProtectedLayout() {
   const { token, isLoading } = useAuth();
@@ -10,28 +16,32 @@ function ProtectedLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading) {
-      
-      const isAuthRoute = segments[0] === 'login';
 
-      if (token && isAuthRoute) {
-        router.replace('/');
-      } else if (!token && !isAuthRoute) {
-        router.replace('/login');
-      }
+     if (isLoading) {
+      return;
     }
-  }, [token, isLoading, segments]);
+   
+    const isAuthRoute = segments[0] === 'login';
 
-  if (isLoading) {
-    return null; 
-  }
+    if (token && isAuthRoute) {
+      router.replace('/');
+    } else if (!token && !isAuthRoute) {
+      router.replace('/login');
+    } 
+
+    // Oculta a splash screen quando a lógica de autenticação estiver concluída
+    SplashScreen.hideAsync();
+
+  }, [token, isLoading, segments, router]);
 
   return (
     <Stack>
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen
         name="index"
-        options={{ title: 'Conferir Aposta', headerStyle: { backgroundColor: '#f0f0f0' } }}
+        options={{
+          headerShown: false, 
+        }}
       />
       <Stack.Screen
         name="results"

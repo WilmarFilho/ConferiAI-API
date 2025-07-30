@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +8,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth(); 
+  const router = useRouter();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -16,6 +18,7 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       await login(email, password);
+      router.replace('/');
     } catch (error: any) {
       Alert.alert('Erro no Login', error.message);
     } finally {

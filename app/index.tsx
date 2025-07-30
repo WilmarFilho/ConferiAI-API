@@ -2,12 +2,13 @@ import { useResults } from '@/contexts/ResultsContext';
 import { FontAwesome } from '@expo/vector-icons';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Image,
+    SafeAreaView, // 1. Importado o SafeAreaView para respeitar a área útil da tela
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -19,28 +20,21 @@ import { useAuth } from '../contexts/AuthContext';
 export default function HomeScreen() {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter(); 
-    const navigation = useNavigation();
-    const { token, logout } = useAuth(); 
-    const { setResults } = useResults(); 
+    const router = useRouter();
+    const { token } = useAuth(); // A função 'logout' não é mais necessária nesta tela
+    const { setResults } = useResults();
 
-    useLayoutEffect(() => {
-        navigation.setOptions({
-            headerRight: () => (
-                <TouchableOpacity onPress={logout} style={styles.logoutIconButton}>
-                    <FontAwesome name="sign-out" size={18} color="white" />
-                </TouchableOpacity>
-            ),
-        });
-    }, [navigation, logout]);
+    // 2. O useLayoutEffect para configurar o header foi removido completamente
+    // pois a barra de navegação não existe mais nesta tela.
 
+    // Limpa a imagem selecionada sempre que a tela recebe foco
     useFocusEffect(
         useCallback(() => {
             setImageUri(null);
-        }, [])
+            setResults(null);
+        }, [setResults])
     );
 
-    // Função para pegar a imagem da galeria
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
@@ -58,25 +52,16 @@ export default function HomeScreen() {
         }
     };
 
-    // Função para enviar a foto para sua API
     const handleSendImage = async () => {
         if (!imageUri) {
             Alert.alert('Nenhuma imagem', 'Por favor, selecione uma imagem antes de enviar.');
             return;
         }
 
-        if (!token) {
-            Alert.alert('Erro de Autenticação', 'Nenhum token encontrado. Por favor, faça login novamente.');
-            logout();
-            return;
-        }
-
         setIsLoading(true);
 
-        const apiUrl = 'https://confereai.conexaopro.com.br/public/api/ocr-upload'; 
-
+        const apiUrl = 'https://confereai.conexaopro.com.br/public/api/ocr-upload';
         const formData = new FormData();
-
         formData.append('file', {
             uri: imageUri,
             name: `recibo_${new Date().getTime()}.jpg`,
@@ -86,49 +71,43 @@ export default function HomeScreen() {
         try {
             const response = await axios.post(apiUrl, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
                 },
             });
-
             setResults(response.data);
-
             router.push('/results');
 
-        } catch (error: any) {
+        } catch (error) {
+            console.error('❌ ERRO NA REQUISIÇÃO:', JSON.stringify(error));
 
-            console.error('❌ ERRO NA REQUISIÇÃO AXIOS:');
+            let userMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
 
-            if (error.response) {
-                // O servidor respondeu com um status de erro (4xx, 5xx)
-                console.error('Data da resposta:', error.response.data);
-                console.error('Status da resposta:', error.response.status);
-                console.error('Headers da resposta:', error.response.headers);
-            } else if (error.request) {
-                // A requisição foi feita, mas nenhuma resposta foi recebida
-                console.error('Requisição feita, mas sem resposta:', error.request);
-            } else {
-                // Algo deu errado ao configurar a requisição
-                console.error('Erro na configuração da requisição:', error.message);
+            if (axios.isAxiosError(error)) {
+                if (error.response) {
+                    userMessage = error.response.data?.message || `Erro no servidor (Status: ${error.response.status}).`;
+                } else if (error.request) {
+                    userMessage = 'Sem resposta do servidor. Verifique sua conexão com a internet.';
+                }
             }
-        
-            console.error('Configuração do Axios:', error.config);
 
-            Alert.alert('Erro de Rede', 'Não foi possível conectar ao servidor. Verifique os logs no terminal para mais detalhes.');
-
+            Alert.alert('Erro no Envio', userMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Compartilhe sua foto</Text>
-            <Text style={styles.subtitle}>Compartilhe sua foto para descobrir se ganhou algum dos prêmios.</Text>
+        // O container principal agora é um SafeAreaView
+        <SafeAreaView style={styles.container}>
+            <Text style={styles.title}>Confira sua Aposta</Text>
+            <Text style={styles.subtitle}>
+                {'Envie a foto do seu bilhete\npara conferir o resultado.'}
+            </Text>
 
             <TouchableOpacity style={styles.selectButton} onPress={handlePickImage}>
                 <FontAwesome name="camera" size={20} color="white" />
-                <Text style={styles.selectButtonText}>Clique aqui</Text>
+                <Text style={styles.selectButtonText}>Selecionar Foto</Text>
             </TouchableOpacity>
 
             <View style={styles.imageContainer}>
@@ -136,9 +115,8 @@ export default function HomeScreen() {
                     <Image source={{ uri: imageUri }} style={styles.image} />
                 ) : (
                     <View style={styles.placeholder}>
-                        <FontAwesome name="photo" size={50} color="#8e8e8e" />
-                        <Text style={styles.placeholderText}>Nenhuma foto selecionada</Text>
-                        <Text style={styles.placeholderSubText}>Clique no botão para selecionar uma foto</Text>
+                        <FontAwesome name="photo" size={50} color="#ccc" />
+                        <Text style={styles.placeholderText}>Nenhuma imagem selecionada</Text>
                     </View>
                 )}
             </View>
@@ -150,30 +128,31 @@ export default function HomeScreen() {
                 {isLoading ? (
                     <ActivityIndicator color="#fff" />
                 ) : (
-                    <Text style={styles.submitButtonText}>Enviar Foto</Text>
+                    <Text style={styles.submitButtonText}>Conferir Resultado</Text>
                 )}
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 }
 
-// Estilos 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e9e9ef',
+        backgroundColor: '#f0f2f5',
         alignItems: 'center',
-        padding: 20,
+        paddingHorizontal: 20, // Padding horizontal mantido
+        paddingTop: 90, // Adicionado um padding superior para dar espaço ao título
+        paddingBottom: 20, // Padding inferior para não colar na borda
     },
     title: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: 'bold',
         color: '#333',
-        marginTop: 30,
+        textAlign: 'center',
         marginBottom: 10,
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#666',
         textAlign: 'center',
         marginBottom: 30,
@@ -182,12 +161,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#4a4a4a',
+        backgroundColor: '#007bff',
         paddingVertical: 15,
-        paddingHorizontal: 60,
         width: '100%',
-        borderRadius: 15,
-        marginBottom: 30,
+        borderRadius: 10,
+        marginBottom: 20,
     },
     selectButtonText: {
         color: 'white',
@@ -199,17 +177,18 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 300,
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 30,
-        borderWidth: 1,
-        borderColor: '#ddd',
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+        borderStyle: 'dashed',
     },
     image: {
         width: '100%',
         height: '100%',
-        borderRadius: 20,
+        borderRadius: 8,
     },
     placeholder: {
         justifyContent: 'center',
@@ -218,19 +197,13 @@ const styles = StyleSheet.create({
     placeholderText: {
         marginTop: 15,
         fontSize: 16,
-        color: '#555',
-        fontWeight: 'bold',
-    },
-    placeholderSubText: {
-        marginTop: 5,
-        fontSize: 14,
-        color: '#8e8e8e',
+        color: '#aaa',
     },
     submitButton: {
-        backgroundColor: '#5cb85c',
+        backgroundColor: '#28a745',
         paddingVertical: 18,
         width: '100%',
-        borderRadius: 15,
+        borderRadius: 10,
         alignItems: 'center',
     },
     submitButtonDisabled: {
@@ -241,13 +214,5 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
-     logoutIconButton: {
-        backgroundColor: '#4a4a4a',
-        width: 38,
-        height: 38,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10,
-    },
+    // 3. Estilo 'logoutIconButton' removido pois não é mais utilizado.
 });

@@ -11,7 +11,7 @@ interface ResultadoAposta {
 }
 
 // Interface para a RESPOSTA DE SUCESSO da API
-interface SuccessResponse {
+export interface SuccessResponse {
   Mensagem: string;
   Concurso: number; 
   TipoJogo: string;
@@ -23,7 +23,7 @@ interface SuccessResponse {
 }
 
 // Interface para a RESPOSTA DE FALLBACK (erro de identificação) da API
-interface FallbackResponse {
+export interface FallbackResponse {
   Mensagem: string;
   'Texto Bruto': string;
   Apostas?: number[][]; 

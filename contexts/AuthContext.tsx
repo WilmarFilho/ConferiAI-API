@@ -37,7 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: email,
         password: password,
       });
-      
+
+       // LINHA DE DEPURAÇÃO CRÍTICA:
+      console.log('RESPOSTA COMPLETA DA API DE LOGIN:', JSON.stringify(response.data, null, 2));
+
       const newToken = response.data.token; 
       setToken(newToken);
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
